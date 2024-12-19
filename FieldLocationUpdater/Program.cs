@@ -1,4 +1,6 @@
-﻿using FieldLocationUpdater.DataLayer;
+﻿using farm_monitoring_api.Utility;
+using FieldLocationUpdater.DataLayer;
+using FieldLocationUpdater.Model;
 using FieldLocationUpdater.ModelDto;
 using FieldLocationUpdater.Service;
 using Microsoft.EntityFrameworkCore;
@@ -7,14 +9,14 @@ using Microsoft.Extensions.DependencyInjection;
 
 try
 {
+    Console.WriteLine("Reading Configuration File...");
     var configuration = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory) // Set the base path to the current directory
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             .Build();
+    Console.WriteLine("Successfully Read the configuration file!");
 
-    // Read values from appsettings.json
-    var appName = configuration["AppSettings:ApplicationName"];
-    var version = configuration["AppSettings:Version"];
+    Console.WriteLine("\nInitiating connection with the database!");
     var connectionString = configuration.GetConnectionString("Con");
 
     var serviceProvider = new ServiceCollection()
@@ -28,10 +30,12 @@ try
 
     // Ensure database is created
     context.Database.EnsureCreated();
+    Console.WriteLine("Successfully established the connection with the database");
 
+    List<FieldDetail> fields = new List<FieldDetail>();
     if (context != null)
     {
-        var fields = context.FieldDetails.ToList();
+        fields = context.FieldDetails.ToList();
     }
 
     string baseUrl = configuration["NominatimSettings:BaseUrl"];
@@ -39,13 +43,48 @@ try
 
     NominatimLocationService locationService = new NominatimLocationService();
 
-    locationService.GetLocationDetailsAsync(new NominatimLocationRequestDto
+    int totalRecords = fields.Count();
+    int processedRecords = 0;
+
+    foreach (var field in fields)
     {
-        BaseUrl = baseUrl,
-        EndPoint = endPoint,
-        Latitude = "23.5542",
-        Longitude = "73.7095"
-    });
+        processedRecords++;
+
+        if (field == null)
+            continue;
+
+        if (string.IsNullOrEmpty(field.coordinates))
+            continue;
+
+        var coordinates = GeoUtils.ExtractFirstCoordinate(field.coordinates);
+
+        var locationDetails = await locationService.GetLocationDetailsAsync(new NominatimLocationRequestDto
+        {
+            BaseUrl = baseUrl,
+            EndPoint = endPoint,
+            Latitude = coordinates.Latitude.ToString(),
+            Longitude = coordinates.Longitude.ToString(),
+        });
+
+        field.state = locationDetails?.address?.state ?? "";
+        field.district = locationDetails?.address?.state_district ?? "";
+        field.taluka = locationDetails?.address?.county ?? "";
+        field.village = new[] {
+            locationDetails?.address?.hamlet,
+            locationDetails?.address?.village,
+            locationDetails?.address?.city
+        }
+        .FirstOrDefault(value => !string.IsNullOrEmpty(value)) ?? "";
+
+        context.Update(field);
+        await context.SaveChangesAsync();
+
+        // Calculate percentage
+        double percentage = (double)processedRecords / totalRecords * 100;
+
+        // Display progress
+        Console.WriteLine($"Processing record {processedRecords}/{totalRecords} - {percentage:F2}% completed");
+    }
 }
 catch(Exception ex)
 {
