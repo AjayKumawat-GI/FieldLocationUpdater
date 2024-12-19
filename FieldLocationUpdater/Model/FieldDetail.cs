@@ -1,8 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FieldLocationUpdater.Model
 {
-    public class FieldDetails
+    [Table("Farm_FarmerDataTagging")]
+    public class FieldDetail
     {
         [Key]
         public int tr_id { get; set; }
