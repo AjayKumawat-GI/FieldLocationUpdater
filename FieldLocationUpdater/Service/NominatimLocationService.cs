@@ -40,6 +40,13 @@ namespace FieldLocationUpdater.Service
 
                 ApiClient apiClient = new ApiClient();
                 response = await apiClient.CallApiAsync<NominatimLocationDetailsResponseDto>(requestDto.BaseUrl, requestDto.EndPoint, HttpMethod.Get, null, null, null);
+
+                if(response == null)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("Process failed!, Unable to fetch location from third party API.");
+                    throw new NullReferenceException();
+                }
             }
             catch (Exception ex)
             {
