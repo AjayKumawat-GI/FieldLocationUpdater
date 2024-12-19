@@ -33,10 +33,6 @@ try
         var fields = context.FieldDetails.ToList();
     }
 
-    // Output the values
-    Console.WriteLine($"Application Name: {appName}");
-    Console.WriteLine($"Version: {version}");
-    Console.WriteLine($"Connection String: {connectionString}");
 }
 catch(Exception ex)
 {
