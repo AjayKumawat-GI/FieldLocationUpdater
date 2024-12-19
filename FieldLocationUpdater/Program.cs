@@ -1,8 +1,9 @@
 ﻿using FieldLocationUpdater.DataLayer;
+using FieldLocationUpdater.ModelDto;
+using FieldLocationUpdater.Service;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System;
 
 try
 {
@@ -18,8 +19,8 @@ try
 
     var serviceProvider = new ServiceCollection()
                 .AddDbContext<CarbonDbContext>(options =>
-                    options.UseSqlServer(configuration.GetConnectionString("Con"))
-                .LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information))
+                    options.UseSqlServer(configuration.GetConnectionString("Con")))
+                //.LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information)) //For logging all the queries executing in sql server
                 .BuildServiceProvider();
 
     // Resolve DbContext and perform operations
@@ -33,6 +34,18 @@ try
         var fields = context.FieldDetails.ToList();
     }
 
+    string baseUrl = configuration["NominatimSettings:BaseUrl"];
+    string endPoint = configuration["NominatimSettings:Endpoint"];
+
+    NominatimLocationService locationService = new NominatimLocationService();
+
+    locationService.GetLocationDetailsAsync(new NominatimLocationRequestDto
+    {
+        BaseUrl = baseUrl,
+        EndPoint = endPoint,
+        Latitude = "23.5542",
+        Longitude = "73.7095"
+    });
 }
 catch(Exception ex)
 {
